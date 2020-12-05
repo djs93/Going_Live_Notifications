@@ -47,6 +47,21 @@ async def on_message(message):
         else:
             await message.channel.send("Please enter a message!")
 
+    if message.content.startswith('!announce color'):
+        if len(message.content.split(' ')) >= 4:
+            username = message.content.split(' ')[2]
+            new_color = message.content.split(' ')[3].lstrip('#')
+            if len(new_color) != 6:
+                await message.channel.send("Invalid hex color length!")
+            else:
+                await message.channel.send(modify_color(username.lower(), new_color))
+        elif len(message.content.split(' ')) == 2:
+            await message.channel.send("Usage: !announce color <twitch_username> #<new_hex_color>"
+                                       "\nTwitch username is not case-sensitive!"
+                                       "\nColor must be in hex and!")
+        else:
+            await message.channel.send("Please enter a color!")
+
 
 @discord_client.event
 async def on_ready():
@@ -151,7 +166,6 @@ def modify_message(username, new_message):
         query = 'SELECT user FROM announce_messages WHERE user=?'
         cursor.execute(query, [username])
         user = cursor.fetchone()
-        update_lists = False
         if user is not None:
             query = 'UPDATE announce_messages SET announce_msg = ? WHERE user = ?'
             cursor.execute(query, (new_message, username))
@@ -163,17 +177,42 @@ def modify_message(username, new_message):
             if msg is not None:
                 return_msg = username + "'s announcement message is now: " + msg[0]
                 message_db.commit()
-                update_lists = True
             else:
                 return_msg = "Error editing user message for " + username
         else:
             return_msg = "User " + username + " is not in the announcement database!"
 
         cursor.close()
+    else:
+        return_msg = "User " + username + " does not exist on Twitch!"
 
-        if update_lists is True:
-            update_twitch_user_list()
+    return return_msg
 
+
+def modify_color(username, new_color):
+    return_msg = "modify_color Return Message"
+    if helix.user(username) is not None:
+        cursor = message_db.cursor()
+        query = 'SELECT user FROM announce_messages WHERE user=?'
+        cursor.execute(query, [username])
+        user = cursor.fetchone()
+        if user is not None:
+            new_color_rgb = tuple(int(new_color[i:i + 2], 16) for i in (0, 2, 4))
+            query = 'UPDATE announce_messages SET color = ? WHERE user = ?'
+            cursor.execute(query, (str(new_color_rgb), username))
+
+            query = 'SELECT color FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+            color = cursor.fetchone()
+
+            if color is not None:
+                return_msg = username + "'s announcement color is now: " + color[0]
+                message_db.commit()
+            else:
+                return_msg = "Error editing user color for " + username
+        else:
+            return_msg = "User " + username + " is not in the announcement database!"
+        cursor.close()
     else:
         return_msg = "User " + username + " does not exist on Twitch!"
 
@@ -194,6 +233,8 @@ def check_alert_users():
 
 def send_alert(twitch_user):
     # send alert for the passed user here
+    img_url = helix.user(twitch_user).stream.thumbnail_url
+    # embed = discord.Embed(colour=discord.colour.Colour.from_rgb())
     print()
 
 
