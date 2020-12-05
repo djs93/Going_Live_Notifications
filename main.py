@@ -25,10 +25,15 @@ async def on_message(message):
             await message.channel.send("Please enter a user!")
 
     if message.content.startswith('!announce remove'):
-        await message.channel.send('Hello!')
+        if len(message.content.split(' ')) > 2:
+            username = ' '.join(message.content.split(' ')[2:])
+            await message.channel.send(remove_user(username))
+        else:
+            await message.channel.send("Please enter a user!")
 
     if message.content.startswith('!announce message'):
         await message.channel.send('Hello!')
+
 
 @discord_client.event
 async def on_ready():
@@ -41,11 +46,15 @@ def update_twitch_user_list():
     cursor = message_db.cursor()
     query = 'SELECT user FROM announce_messages'
     cursor.execute(query)
-    users_to_check = cursor.fetchall()
+    users_to_check = []
+    for user_tuple in cursor.fetchall():
+        users_to_check.append(user_tuple[0])
     cursor.close()
     for user in users_to_check:
         if user not in already_announced:
             already_announced[user] = False
+    print("users_to_check: "+str(users_to_check))
+    print("already_announced: "+str(already_announced))
 
 
 def add_user(username):
@@ -72,6 +81,44 @@ def add_user(username):
                 return_msg = "Error adding user " + username
         else:
             return_msg = "User " + username + " already exists!"
+
+        cursor.close()
+
+        if update_lists is True:
+            update_twitch_user_list()
+
+    else:
+        return_msg = "User " + username + " does not exist on Twitch!"
+
+    return return_msg
+
+
+def remove_user(username):
+    return_msg = "remove_user Return Message"
+    if helix.user(username) is not None:
+        cursor = message_db.cursor()
+        query = 'SELECT user FROM announce_messages WHERE user=?'
+        cursor.execute(query, [username])
+        user = cursor.fetchone()
+        update_lists = False
+        if user is None:
+            return_msg = "User " + username + " is not in the announcement database!"
+        else:
+            query = 'DELETE FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+
+            query = 'SELECT user FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+            user = cursor.fetchone()
+
+            if user is None:
+                return_msg = "Removed user " + username + "!"
+                message_db.commit()
+                if username in already_announced:
+                    del already_announced[username]
+                update_lists = True
+            else:
+                return_msg = "Error adding user " + username
 
         cursor.close()
 
