@@ -101,7 +101,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1607132084576</updated>
-      <workItem from="1607132096400" duration="20657000" />
+      <workItem from="1607132096400" duration="22935000" />
     </task>
     <task id="LOCAL-00001" summary="Add project config files">
       <created>1607132531182</created>
@@ -152,7 +152,14 @@
       <option name="project" value="LOCAL" />
       <updated>1607153221037</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Added manual shout-outs">
+      <created>1607154152884</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1607154152884</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -166,10 +173,11 @@
     <MESSAGE value="Add modify_color, to be used in embeds" />
     <MESSAGE value="Get user color, return random color on no set color" />
     <MESSAGE value="Make colors ints, create embeds for sending" />
-    <option name="LAST_COMMIT_MESSAGE" value="Make colors ints, create embeds for sending" />
+    <MESSAGE value="Added manual shout-outs" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added manual shout-outs" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Going_Live_Notifications$tests.coverage" NAME="tests Coverage Results" MODIFIED="1607144048529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Going_Live_Notifications$main.coverage" NAME="main Coverage Results" MODIFIED="1607153906100" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Going_Live_Notifications$main.coverage" NAME="main Coverage Results" MODIFIED="1607190865335" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

@@ -1,5 +1,7 @@
 # Dale Schofield
 # 12/4/2020
+import asyncio
+
 import twitch, discord
 import credentials, channels
 import datetime, threading, time, random
@@ -18,6 +20,8 @@ async def on_message(message):
         return
 
     if message.content.startswith('!announce add'):
+        # TODO add option where you can specify person, color, and live message all in one go
+        # (useful for if they're already live)
         if len(message.content.split(' ')) > 2:
             username = ' '.join(message.content.split(' ')[2:])
             await message.channel.send(add_user(username.lower()))
@@ -74,8 +78,8 @@ async def on_message(message):
 async def on_ready():
     print('We have logged in as {0.user}'.format(discord_client))
     await discord_client.get_channel(int(channels.command_channel)).send('Hello!')
-    update_twitch_user_list()
-    await check_alert_users()
+    await polling_loop()
+
 
 
 def update_twitch_user_list():
@@ -241,7 +245,7 @@ def get_user_color(username):
             color_fetch = cursor.fetchone()
 
             if color_fetch is not None and color_fetch[0] is not None:
-                return_color = int("0x"+color_fetch[0], 0)
+                return_color = int("0x" + color_fetch[0], 0)
         cursor.close()
     return return_color
 
@@ -251,7 +255,7 @@ def get_random_color():
 
 
 def get_user_message(username):
-    return_msg = username+" is live!"
+    return_msg = username + " is live!"
     if helix.user(username) is not None:
         cursor = message_db.cursor()
         query = 'SELECT user FROM announce_messages WHERE user=?'
@@ -335,11 +339,14 @@ async def send_alert_manual(twitch_user, caller):
         )
 
 
-def polling_loop():
+async def polling_loop():
     global next_call
     # do stuff here
-    next_call = next_call + 1
-    threading.Timer(next_call - time.time(), polling_loop).start()
+    update_twitch_user_list()
+    await check_alert_users()
+    next_call = next_call + 6
+    await asyncio.sleep(next_call - time.time())
+    await polling_loop()
 
 
 if __name__ == '__main__':
