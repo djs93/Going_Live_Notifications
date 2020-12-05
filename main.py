@@ -62,6 +62,13 @@ async def on_message(message):
         else:
             await message.channel.send("Please enter a color!")
 
+    if message.content.startswith('!announce manual'):
+        if len(message.content.split(' ')) > 2:
+            username = ' '.join(message.content.split(' ')[2:])
+            await send_alert_manual(username, message.author.mention)
+        elif len(message.content.split(' ')) == 2:
+            await message.channel.send("Usage: !announce manual <twitch_username>")
+
 
 @discord_client.event
 async def on_ready():
@@ -239,6 +246,10 @@ def get_user_color(username):
     return return_color
 
 
+def get_random_color():
+    return random.randint(0, 16777215);
+
+
 def get_user_message(username):
     return_msg = username+" is live!"
     if helix.user(username) is not None:
@@ -290,6 +301,38 @@ async def send_alert(twitch_user):
     embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
 
     await discord_client.get_channel(int(channels.command_channel)).send(get_user_message(twitch_user), embed=embed)
+
+
+async def send_alert_manual(twitch_user, caller):
+    # send alert for the passed user here
+    user = helix.user(twitch_user)
+    if user is None:
+        error = "Alert error, user " + twitch_user + " doesn't exist on Twitch!"
+        discord_client.get_channel(int(channels.command_channel)).send(error)
+        return
+    if user.is_live is False:
+        error = "User " + twitch_user + " is not live on Twitch!"
+        discord_client.get_channel(int(channels.command_channel)).send(error)
+    title = user.stream.title
+    url = "https://www.twitch.tv/" + twitch_user.lower()
+    if user in users_to_check:
+        user_color = get_user_color(twitch_user)
+    else:
+        user_color = get_random_color()
+    embed = discord.Embed(title=title, url=url, color=user_color)
+    embed.set_author(name=user.display_name, url=url, icon_url=user.profile_image_url)
+    embed.set_thumbnail(url=user.profile_image_url)
+    thumb_url = user.stream.thumbnail_url.split('{')[0]
+    thumb_url += "1280x720.jpg"
+    embed.set_image(url=thumb_url)
+    embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
+    if user in users_to_check:
+        await discord_client.get_channel(int(channels.command_channel)).send(get_user_message(twitch_user), embed=embed)
+    else:
+        await discord_client.get_channel(int(channels.command_channel)).send(
+            caller + " wanted everybody to know that " + user.display_name + " is live!",
+            embed=embed
+        )
 
 
 def polling_loop():
