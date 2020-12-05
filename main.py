@@ -20,19 +20,32 @@ async def on_message(message):
     if message.content.startswith('!announce add'):
         if len(message.content.split(' ')) > 2:
             username = ' '.join(message.content.split(' ')[2:])
-            await message.channel.send(add_user(username))
+            await message.channel.send(add_user(username.lower()))
+        elif len(message.content.split(' ')) == 2:
+            await message.channel.send("Usage: !announce add <twitch_username>\nNot case-sensitive!")
         else:
             await message.channel.send("Please enter a user!")
 
     if message.content.startswith('!announce remove'):
         if len(message.content.split(' ')) > 2:
             username = ' '.join(message.content.split(' ')[2:])
-            await message.channel.send(remove_user(username))
+            await message.channel.send(remove_user(username.lower()))
+        elif len(message.content.split(' ')) == 2:
+            await message.channel.send("Usage: !announce remove <twitch_username>\nNot case-sensitive!")
         else:
             await message.channel.send("Please enter a user!")
 
     if message.content.startswith('!announce message'):
-        await message.channel.send('Hello!')
+        if len(message.content.split(' ')) >= 4:
+            username = message.content.split(' ')[2]
+            new_message = ' '.join(message.content.split(' ')[3:])
+            await message.channel.send(modify_message(username.lower(), new_message))
+        elif len(message.content.split(' ')) == 2:
+            await message.channel.send("Usage: !announce message <twitch_username> <new_message>"
+                                       "\nTwitch username is not case-sensitive!"
+                                       "\nNew message can be separated by spaces")
+        else:
+            await message.channel.send("Please enter a message!")
 
 
 @discord_client.event
@@ -53,8 +66,8 @@ def update_twitch_user_list():
     for user in users_to_check:
         if user not in already_announced:
             already_announced[user] = False
-    print("users_to_check: "+str(users_to_check))
-    print("already_announced: "+str(already_announced))
+    print("users_to_check: " + str(users_to_check))
+    print("already_announced: " + str(already_announced))
 
 
 def add_user(username):
@@ -131,14 +144,55 @@ def remove_user(username):
     return return_msg
 
 
+def modify_message(username, new_message):
+    return_msg = "modify_message Return Message"
+    if helix.user(username) is not None:
+        cursor = message_db.cursor()
+        query = 'SELECT user FROM announce_messages WHERE user=?'
+        cursor.execute(query, [username])
+        user = cursor.fetchone()
+        update_lists = False
+        if user is not None:
+            query = 'UPDATE announce_messages SET announce_msg = ? WHERE user = ?'
+            cursor.execute(query, (new_message, username))
+
+            query = 'SELECT announce_msg FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+            msg = cursor.fetchone()
+
+            if msg is not None:
+                return_msg = username + "'s announcement message is now: " + msg[0]
+                message_db.commit()
+                update_lists = True
+            else:
+                return_msg = "Error editing user message for " + username
+        else:
+            return_msg = "User " + username + " is not in the announcement database!"
+
+        cursor.close()
+
+        if update_lists is True:
+            update_twitch_user_list()
+
+    else:
+        return_msg = "User " + username + " does not exist on Twitch!"
+
+    return return_msg
+
+
 def check_alert_users():
     # check channels here
     global users_to_check
     for user in users_to_check:
         channel_state = helix.user(user).is_live
+        if channel_state is True and already_announced[user] is False:  # User went online and we need to announce
+            send_alert(user)
+            already_announced[user] = True
+        elif channel_state is False and already_announced[user] is True:  # User went offline
+            already_announced[user] = False
 
 
-def send_alerts(twitch_user):
+def send_alert(twitch_user):
     # send alert for the passed user here
     print()
 
@@ -154,4 +208,5 @@ if __name__ == '__main__':
     helix = twitch.Helix(credentials.client_id, credentials.client_secret)
     print(helix.user('ilikepiez5642').is_live)
     update_twitch_user_list()
+    check_alert_users()
     discord_client.run(credentials.discord_token)
