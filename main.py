@@ -2,7 +2,7 @@
 # 12/4/2020
 import twitch, discord
 import credentials, channels
-import datetime, threading, time
+import datetime, threading, time, random
 import sqlite3
 
 discord_client = discord.Client()
@@ -94,8 +94,8 @@ def add_user(username):
         user = cursor.fetchone()
         update_lists = False
         if user is None:
-            query = 'INSERT INTO announce_messages VALUES (?,?)'
-            cursor.execute(query, (username, ""))
+            query = 'INSERT INTO announce_messages VALUES (?,?,?)'
+            cursor.execute(query, (username, None, None))
 
             query = 'SELECT user FROM announce_messages WHERE user = ?'
             cursor.execute(query, [username])
@@ -217,6 +217,26 @@ def modify_color(username, new_color):
         return_msg = "User " + username + " does not exist on Twitch!"
 
     return return_msg
+
+
+def get_user_color(username):
+    return_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    if helix.user(username) is not None:
+        cursor = message_db.cursor()
+        query = 'SELECT user FROM announce_messages WHERE user=?'
+        cursor.execute(query, [username])
+        user = cursor.fetchone()
+        if user is not None:
+            cursor = message_db.cursor()
+            query = 'SELECT color FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+            color_fetch = cursor.fetchone()
+
+            if color_fetch is not None and color_fetch[0] is not None:
+                return_color = color_fetch[0].strip("( )")
+        cursor.close()
+
+    return return_color
 
 
 def check_alert_users():
