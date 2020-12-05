@@ -67,6 +67,8 @@ async def on_message(message):
 async def on_ready():
     print('We have logged in as {0.user}'.format(discord_client))
     await discord_client.get_channel(int(channels.command_channel)).send('Hello!')
+    update_twitch_user_list()
+    await check_alert_users()
 
 
 def update_twitch_user_list():
@@ -197,16 +199,15 @@ def modify_color(username, new_color):
         cursor.execute(query, [username])
         user = cursor.fetchone()
         if user is not None:
-            new_color_rgb = tuple(int(new_color[i:i + 2], 16) for i in (0, 2, 4))
             query = 'UPDATE announce_messages SET color = ? WHERE user = ?'
-            cursor.execute(query, (str(new_color_rgb), username))
+            cursor.execute(query, (str(new_color), username))
 
             query = 'SELECT color FROM announce_messages WHERE user = ?'
             cursor.execute(query, [username])
             color = cursor.fetchone()
 
             if color is not None:
-                return_msg = username + "'s announcement color is now: " + color[0]
+                return_msg = username + "'s announcement color is now: #" + color[0]
                 message_db.commit()
             else:
                 return_msg = "Error editing user color for " + username
@@ -220,7 +221,7 @@ def modify_color(username, new_color):
 
 
 def get_user_color(username):
-    return_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    return_color = random.randint(0, 16777215)
     if helix.user(username) is not None:
         cursor = message_db.cursor()
         query = 'SELECT user FROM announce_messages WHERE user=?'
@@ -233,29 +234,62 @@ def get_user_color(username):
             color_fetch = cursor.fetchone()
 
             if color_fetch is not None and color_fetch[0] is not None:
-                return_color = color_fetch[0].strip("( )")
+                return_color = int("0x"+color_fetch[0], 0)
         cursor.close()
-
     return return_color
 
 
-def check_alert_users():
+def get_user_message(username):
+    return_msg = username+" is live!"
+    if helix.user(username) is not None:
+        cursor = message_db.cursor()
+        query = 'SELECT user FROM announce_messages WHERE user=?'
+        cursor.execute(query, [username])
+        user = cursor.fetchone()
+        if user is not None:
+            cursor = message_db.cursor()
+            query = 'SELECT announce_msg FROM announce_messages WHERE user = ?'
+            cursor.execute(query, [username])
+            msg_fetch = cursor.fetchone()
+
+            if msg_fetch is not None and msg_fetch[0] is not None:
+                return_msg = msg_fetch[0]
+        cursor.close()
+
+    return return_msg
+
+
+async def check_alert_users():
     # check channels here
     global users_to_check
     for user in users_to_check:
         channel_state = helix.user(user).is_live
         if channel_state is True and already_announced[user] is False:  # User went online and we need to announce
-            send_alert(user)
+            await send_alert(user)
             already_announced[user] = True
         elif channel_state is False and already_announced[user] is True:  # User went offline
             already_announced[user] = False
 
 
-def send_alert(twitch_user):
+async def send_alert(twitch_user):
     # send alert for the passed user here
-    img_url = helix.user(twitch_user).stream.thumbnail_url
-    # embed = discord.Embed(colour=discord.colour.Colour.from_rgb())
-    print()
+    user = helix.user(twitch_user)
+    if user is None:
+        error = "Alert error, user " + twitch_user + " doesn't exist on Twitch!"
+        discord_client.get_channel(int(channels.command_channel)).send(error)
+        return
+    title = user.stream.title
+    url = "https://www.twitch.tv/" + twitch_user.lower()
+    user_color = get_user_color(twitch_user)
+    embed = discord.Embed(title=title, url=url, color=user_color)
+    embed.set_author(name=user.display_name, url=url, icon_url=user.profile_image_url)
+    embed.set_thumbnail(url=user.profile_image_url)
+    thumb_url = user.stream.thumbnail_url.split('{')[0]
+    thumb_url += "1280x720.jpg"
+    embed.set_image(url=thumb_url)
+    embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
+
+    await discord_client.get_channel(int(channels.command_channel)).send(get_user_message(twitch_user), embed=embed)
 
 
 def polling_loop():
@@ -267,7 +301,4 @@ def polling_loop():
 
 if __name__ == '__main__':
     helix = twitch.Helix(credentials.client_id, credentials.client_secret)
-    print(helix.user('ilikepiez5642').is_live)
-    update_twitch_user_list()
-    check_alert_users()
     discord_client.run(credentials.discord_token)
