@@ -2,6 +2,7 @@
 # 12/4/2020
 import asyncio
 
+import requests
 import twitch, discord
 import credentials, channels
 import datetime, threading, time, random
@@ -19,14 +20,25 @@ async def on_message(message):
     if message.author == discord_client.user:
         return
 
+    if message.channel.id != channels.command_channel and message.author != message.channel.guild.owner:
+        return
+
     if message.content.startswith('!announce add'):
-        # TODO add option where you can specify person, color, and live message all in one go
-        # (useful for if they're already live)
-        if len(message.content.split(' ')) > 2:
+        if len(message.content.split(' ')) >= 5:  # we have person, color, and message
+            username = message.content.split(' ')[2]
+            new_color = message.content.split(' ')[3].lstrip('#')
+            new_message = ' '.join(message.content.split(' ')[4:])
+            await message.channel.send(add_user_all(username, new_color, new_message))
+        elif len(message.content.split(' ')) == 4:  # we have person and color
+            username = message.content.split(' ')[2]
+            new_color = message.content.split(' ')[3].lstrip('#')
+            await message.channel.send(add_user_with_color(username, new_color))
+        elif len(message.content.split(' ')) > 2:
             username = ' '.join(message.content.split(' ')[2:])
             await message.channel.send(add_user(username.lower()))
         elif len(message.content.split(' ')) == 2:
-            await message.channel.send("Usage: !announce add <twitch_username>\nNot case-sensitive!")
+            await message.channel.send("Usage: !announce add <twitch username>\nNot case-sensitive!")
+            await message.channel.send("Usage: !announce add <twitch username> <hex color with #> <going live message>")
         else:
             await message.channel.send("Please enter a user!")
 
@@ -78,8 +90,8 @@ async def on_message(message):
 async def on_ready():
     print('We have logged in as {0.user}'.format(discord_client))
     await discord_client.get_channel(int(channels.command_channel)).send('Hello!')
-    await polling_loop()
-
+    update_twitch_user_list()
+    # await polling_loop()
 
 
 def update_twitch_user_list():
@@ -132,6 +144,34 @@ def add_user(username):
         return_msg = "User " + username + " does not exist on Twitch!"
 
     return return_msg
+
+
+def add_user_with_color(username, new_color):
+    curr_msg = add_user(username)
+    if curr_msg.split(' ')[0] != "Added":
+        return curr_msg
+
+    curr_msg = modify_color(username, new_color)
+    if curr_msg[0:len(username)] != username:
+        return curr_msg
+
+    return username + " has been added with color #" + new_color + "!"
+
+
+def add_user_all(username, new_color, new_msg):
+    curr_msg = add_user(username)
+    if curr_msg.split(' ')[0] != "Added":
+        return curr_msg
+
+    curr_msg = modify_color(username, new_color)
+    if curr_msg[0:len(username)] != username:
+        return curr_msg
+
+    curr_msg = modify_message(username, new_msg)
+    if curr_msg[0:len(username)] != username:
+        return curr_msg
+
+    return username + " has been added with color #" + new_color + " and message " + new_msg + "!"
 
 
 def remove_user(username):
@@ -304,7 +344,9 @@ async def send_alert(twitch_user):
     embed.set_image(url=thumb_url)
     embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
 
-    await discord_client.get_channel(int(channels.command_channel)).send(get_user_message(twitch_user), embed=embed)
+    send_msg = get_user_message(twitch_user)
+    for channel_id in channels.notif_channels:
+        await discord_client.get_channel(channel_id).send(send_msg, embed=embed)
 
 
 async def send_alert_manual(twitch_user, caller):
@@ -331,24 +373,47 @@ async def send_alert_manual(twitch_user, caller):
     embed.set_image(url=thumb_url)
     embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
     if user in users_to_check:
-        await discord_client.get_channel(int(channels.command_channel)).send(get_user_message(twitch_user), embed=embed)
+        user_msg = get_user_message(twitch_user)
+        for channel_id in channels.notif_channels:
+            await discord_client.get_channel(channel_id).send(user_msg, embed=embed)
     else:
-        await discord_client.get_channel(int(channels.command_channel)).send(
-            caller + " wanted everybody to know that " + user.display_name + " is live!",
-            embed=embed
-        )
+        for channel_id in channels.notif_channels:
+            await discord_client.get_channel(channel_id).send(
+                caller + " wanted everybody to know that " + user.display_name + " is live!",
+                embed=embed
+            )
 
 
 async def polling_loop():
     global next_call
     # do stuff here
-    update_twitch_user_list()
-    await check_alert_users()
-    next_call = next_call + 6
+    try:
+        await check_alert_users()
+    except requests.exceptions.ConnectionError as error:
+        await discord_client.get_channel(channels.command_channel).send('Connection error! (Probably rate limit)\n'
+                                                                        'Here\'s the error: ' + error.strerror)
+    next_call = next_call + 7
     await asyncio.sleep(next_call - time.time())
     await polling_loop()
 
 
+async def poll():
+    global next_call
+    # do stuff here
+    try:
+        await check_alert_users()
+    except requests.exceptions.ConnectionError as error:
+        await discord_client.get_channel(channels.command_channel).send('Connection error! (Probably rate limit)\n'
+                                                                        'Here\'s the error: ' + error.strerror)
+    next_call = next_call + 7
+    await asyncio.sleep(next_call - time.time())
+
+async def background_task():
+    await discord_client.wait_until_ready()
+    while not discord_client.is_closed():
+        await poll()
+
 if __name__ == '__main__':
     helix = twitch.Helix(credentials.client_id, credentials.client_secret)
+    discord_client.loop.create_task(background_task())
     discord_client.run(credentials.discord_token)

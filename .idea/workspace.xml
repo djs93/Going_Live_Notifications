@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="2f2c0b2f-8809-435f-9860-e8de8cefc828" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/channels-example.py" beforeDir="false" afterPath="$PROJECT_DIR$/channels-example.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -101,7 +102,8 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1607132084576</updated>
-      <workItem from="1607132096400" duration="22935000" />
+      <workItem from="1607132096400" duration="27489000" />
+      <workItem from="1607214794745" duration="3697000" />
     </task>
     <task id="LOCAL-00001" summary="Add project config files">
       <created>1607132531182</created>
@@ -159,7 +161,14 @@
       <option name="project" value="LOCAL" />
       <updated>1607154152884</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Polling loop now works">
+      <created>1607191119556</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1607191119556</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -174,10 +183,11 @@
     <MESSAGE value="Get user color, return random color on no set color" />
     <MESSAGE value="Make colors ints, create embeds for sending" />
     <MESSAGE value="Added manual shout-outs" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added manual shout-outs" />
+    <MESSAGE value="Polling loop now works" />
+    <option name="LAST_COMMIT_MESSAGE" value="Polling loop now works" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/Going_Live_Notifications$tests.coverage" NAME="tests Coverage Results" MODIFIED="1607144048529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Going_Live_Notifications$main.coverage" NAME="main Coverage Results" MODIFIED="1607190865335" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Going_Live_Notifications$main.coverage" NAME="main Coverage Results" MODIFIED="1607224021287" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
