@@ -331,7 +331,12 @@ async def send_alert(twitch_user):
     user = helix.user(twitch_user)
     if user is None:
         error = "Alert error, user " + twitch_user + " doesn't exist on Twitch!"
-        discord_client.get_channel(int(channels.command_channel)).send(error)
+        discord_client.get_channel(channels.command_channel).send(error)
+        return
+    if user.stream is None:
+        error = "Alert error, user " + twitch_user + " isn't live on Twitch but we tried to send an alert anyway!"
+        discord_client.get_channel(channels.command_channel).send(error)
+        already_announced[twitch_user] = False
         return
     title = user.stream.title
     url = "https://www.twitch.tv/" + twitch_user.lower()
