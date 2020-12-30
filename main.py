@@ -320,10 +320,12 @@ async def check_alert_users():
     for user in users_to_check:
         channel_state = helix.user(user).is_live
         if channel_state is True and already_announced[user] is False:  # User went online and we need to announce
-            await send_alert(user)
             already_announced[user] = True
+            await send_alert(user)
         elif channel_state is False and already_announced[user] is True:  # User went offline
             already_announced[user] = False
+    now = datetime.datetime.now()
+    print("[" + now.strftime("%H:%M:%S") + "] users_to_check: " + str(already_announced))
 
 
 async def send_alert(twitch_user):
@@ -333,25 +335,37 @@ async def send_alert(twitch_user):
         error = "Alert error, user " + twitch_user + " doesn't exist on Twitch!"
         discord_client.get_channel(channels.command_channel).send(error)
         return
-    if user.stream is None:
-        error = "Alert error, user " + twitch_user + " isn't live on Twitch but we tried to send an alert anyway!"
-        discord_client.get_channel(channels.command_channel).send(error)
+    try:
+        if user.is_live is False:
+            error = "Alert error, user " + twitch_user + " isn't live on Twitch but we tried to send an alert anyway!"
+            discord_client.get_channel(channels.command_channel).send(error)
+            already_announced[twitch_user] = False
+            return
+    except twitch.helix.resources.streams.StreamNotFound as error:
+        error_msg = "Alert error, user " + twitch_user + " doesn't have a stream on Twitch but we tried to send an alert anyway!"
+        discord_client.get_channel(channels.command_channel).send(error_msg)
         already_announced[twitch_user] = False
         return
-    title = user.stream.title
-    url = "https://www.twitch.tv/" + twitch_user.lower()
-    user_color = get_user_color(twitch_user)
-    embed = discord.Embed(title=title, url=url, color=user_color)
-    embed.set_author(name=user.display_name, url=url, icon_url=user.profile_image_url)
-    embed.set_thumbnail(url=user.profile_image_url)
-    thumb_url = user.stream.thumbnail_url.split('{')[0]
-    thumb_url += "1280x720.jpg"
-    embed.set_image(url=thumb_url)
-    embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
+    except Exception as error:
+        template = "An exception of type {0} occurred in send_alert."
+        message = template.format(type(error).__name__)
+        discord_client.get_channel(channels.command_channel).send(message)
+    finally:
+        title = user.stream.title
+        url = "https://www.twitch.tv/" + twitch_user.lower()
+        user_color = get_user_color(twitch_user)
+        embed = discord.Embed(title=title, url=url, color=user_color)
+        embed.set_author(name=user.display_name, url=url, icon_url=user.profile_image_url)
+        embed.set_thumbnail(url=user.profile_image_url)
+        thumb_url = user.stream.thumbnail_url.split('{')[0]
+        thumb_url += "1280x720.jpg"
+        embed.set_image(url=thumb_url)
+        embed.add_field(name="Game", value=helix.game(id=user.stream.game_id).name, inline=True)
 
-    send_msg = get_user_message(twitch_user)
-    for channel_id in channels.notif_channels:
-        await discord_client.get_channel(channel_id).send(send_msg, embed=embed)
+        send_msg = get_user_message(twitch_user)
+        for channel_id in channels.notif_channels:
+            await discord_client.get_channel(channel_id).send(send_msg, embed=embed)
+            print("Sent alert in " + discord_client.get_channel(channel_id).name + "!")
 
 
 async def send_alert_manual(twitch_user, caller):
@@ -403,20 +417,31 @@ async def polling_loop():
 
 
 async def poll():
-    global next_call
+    global next_call, helix
     # do stuff here
     try:
         await check_alert_users()
-    except requests.exceptions.ConnectionError as error:
-        await discord_client.get_channel(channels.command_channel).send('Connection error! (Probably rate limit)\n'
-                                                                        'Here\'s the error: ' + error.strerror)
+    except requests.ConnectionError as error:
+        await discord_client.get_channel(channels.command_channel).send('Connection error!\n'
+                                                                        'Here\'s the error: ' + error.response.text)
+        # helix = twitch.Helix(credentials.client_id, credentials.client_secret)
+    except requests.HTTPError as error:
+        # helix = twitch.Helix(credentials.client_id, credentials.client_secret)
+        if error.response.status_code == 502:
+            await discord_client.get_channel(channels.command_channel).send('Bad gateway error! Retrying in 7 seconds.')
+
     next_call = next_call + 7
     await asyncio.sleep(next_call - time.time())
 
 async def background_task():
     await discord_client.wait_until_ready()
     while not discord_client.is_closed():
-        await poll()
+        try:
+            await poll()
+        except Exception as error:
+            template = "An exception of type {0} occurred while looping."
+            message = template.format(type(error).__name__)
+            await discord_client.get_channel(channels.command_channel).send(message)
 
 if __name__ == '__main__':
     helix = twitch.Helix(credentials.client_id, credentials.client_secret)
